@@ -14,6 +14,7 @@ module PEM
 
         existing_certificate = certificate_sorted.detect do |c|
           c.owner_name == PEM.config[:app_identifier]
+          UI.message("CERTTTTT" + c.to_s)
         end
 
         if PEM.config[:revoke_all]
