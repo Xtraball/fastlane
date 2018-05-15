@@ -90,7 +90,12 @@ module PEM
                                      short_option: "-e",
                                      env_name: "PEM_OUTPUT_PATH",
                                      description: "The path to a directory in which all certificates and private keys should be stored",
-                                     default_value: ".")
+                                     default_value: "."),
+        FastlaneCore::ConfigItem.new(key: :revoke_all,
+                                     env_name: "PEM_REVOKE_ALL",
+                                     description: "Revoke all certificates",
+                                     is_string: false,
+                                     default_value: false)
       ]
     end
   end
