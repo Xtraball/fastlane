@@ -96,7 +96,7 @@ module PEM
         begin
           certificate.all.select { |crt| crt.owner_name.match(/#{Regexp.escape(PEM.config[:app_identifier])}/) }.each { |crt|
             revoke(crt)
-            UI.message("CERT #{crt.name}")
+            UI.message("REVOKED CERT #{crt.owner_name}")
           }
         #rescue => ex
         #  UI.important ex.backtrace
