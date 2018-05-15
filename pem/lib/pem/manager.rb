@@ -94,8 +94,12 @@ module PEM
         UI.important "Revoking existing Push Certificates."
 
         begin
-          certificate.all.select { |crt| crt.name == PEM.config[:app_identifier] }.each { |crt| revoke(crt) }
-          # rescue => ex
+          certificate.all.select { |crt| crt.name == PEM.config[:app_identifier] }.each { |crt|
+            revoke(crt)
+            UI.message("CERT #{crt.name}")
+          }
+        rescue => ex
+          UI.important ex.backtrace
         end
       end
 
