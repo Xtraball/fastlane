@@ -14,7 +14,6 @@ module PEM
 
         existing_certificate = certificate_sorted.detect do |c|
           c.owner_name == PEM.config[:app_identifier]
-          UI.message("CERTTTTT" + c.to_s)
         end
 
         if PEM.config[:revoke_all]
@@ -95,12 +94,12 @@ module PEM
         UI.important "Revoking existing Push Certificates."
 
         begin
-          certificate.all.select { |crt| crt.name == PEM.config[:app_identifier] }.each { |crt|
+          certificate.all.select { |crt| crt.owner_name.match(/#{Regexp.escape(PEM.config[:app_identifier])}/) }.each { |crt|
             revoke(crt)
             UI.message("CERT #{crt.name}")
           }
-        rescue => ex
-          UI.important ex.backtrace
+        #rescue => ex
+        #  UI.important ex.backtrace
         end
       end
 
