@@ -23,12 +23,12 @@ module FastlaneCore
     def self.installed_identies(in_keychain: nil)
       install_wwdr_certificate unless wwdr_certificate_installed?
 
-      available = list_available_identities
+      available = list_available_identities(in_keychain: in_keychain)
       # Match for this text against word boundaries to avoid edge cases around multiples of 10 identities!
       if /\b0 valid identities found\b/ =~ available
         UI.error([
           "There are no local code signing identities found.",
-          "You can run `security find-identity -v -p codesigning` to get this output.",
+          "You can run" << " `security find-identity -v -p codesigning #{in_keychain}".rstrip << "` to get this output.",
           "This Stack Overflow thread has more information: https://stackoverflow.com/q/35390072/774.",
           "(Check in Keychain Access for an expired WWDR certificate: https://stackoverflow.com/a/35409835/774 has more info.)"
         ].join("\n"))

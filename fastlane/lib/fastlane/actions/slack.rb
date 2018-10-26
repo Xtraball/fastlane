@@ -62,7 +62,7 @@ module Fastlane
       end
 
       def self.description
-        "Send a success/error message to your Slack group"
+        "Send a success/error message to your [Slack](https://slack.com) group"
       end
 
       def self.available_options
@@ -70,6 +70,10 @@ module Fastlane
           FastlaneCore::ConfigItem.new(key: :message,
                                        env_name: "FL_SLACK_MESSAGE",
                                        description: "The message that should be displayed on Slack. This supports the standard Slack markup language",
+                                       optional: true),
+          FastlaneCore::ConfigItem.new(key: :pretext,
+                                       env_name: "FL_SLACK_PRETEXT",
+                                       description: "This is optional text that appears above the message attachment block. This supports the standard Slack markup language",
                                        optional: true),
           FastlaneCore::ConfigItem.new(key: :channel,
                                        env_name: "FL_SLACK_CHANNEL",
@@ -185,6 +189,7 @@ module Fastlane
         slack_attachment = {
           fallback: options[:message],
           text: options[:message],
+          pretext: options[:pretext],
           color: color,
           mrkdwn_in: ["pretext", "text", "fields", "message"],
           fields: []
