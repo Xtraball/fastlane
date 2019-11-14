@@ -134,7 +134,7 @@ module Fastlane
       UI.user_error!("To call another action from an action use `other_action.#{method_sym}` instead")
     end
 
-    # When shelling out from the actoin, should we use `bundle exec`?
+    # When shelling out from the action, should we use `bundle exec`?
     def self.shell_out_should_use_bundle_exec?
       return File.exist?('Gemfile') && !Helper.contained_fastlane?
     end
@@ -186,5 +186,13 @@ class String
     first_line_indent = self.match(/^\s*/)[0]
 
     self.gsub!(/^#{first_line_indent}/, "")
+  end
+
+  def remove_markdown
+    string = self.gsub(/^>/, "") # remove Markdown quotes
+    string = string.gsub(/\[http[^\]]+\]\(([^)]+)\)/, '\1 🔗') # remove Markdown links
+    string = string.gsub(/\[([^\]]+)\]\(([^\)]+)\)/, '"\1" (\2 🔗)') # remove Markdown links with custom text
+    string = string.gsub("|", "") # remove new line preserve markers
+    return string
   end
 end

@@ -25,7 +25,7 @@ module Spaceship
       #   "Spaceship App"
       attr_accessor :name
 
-      # @return (String) The Vendor ID provided by App Store Connect
+      # @return (String) The SKU (Stock keeping unit) you provided for this app for internal tracking
       # @example
       #   "1435592086"
       attr_accessor :vendor_id
@@ -156,6 +156,10 @@ module Spaceship
       #  `{"sectionErrorKeys"=>[], "sectionInfoKeys"=>[], "sectionWarningKeys"=>[], "replyConstraints"=>{"minLength"=>1, "maxLength"=>4000}, "appNotes"=>{"threads"=>[]}, "betaNotes"=>{"threads"=>[]}, "appMessages"=>{"threads"=>[]}}`
       def resolution_center
         client.get_resolution_center(apple_id, platform)
+      end
+
+      def reply_resolution_center(app_id, platform, thread_id, version_id, version_number, from, message_body)
+        client.post_resolution_center(app_id, platform, thread_id, version_id, version_number, from, message_body)
       end
 
       def ratings(version_id: '', storefront: '')

@@ -581,7 +581,8 @@ module Spaceship
         teamId: team_id,
         type: type,
         csrContent: csr,
-        appIdId: app_id # optional
+        appIdId: app_id, # optional
+        specialIdentifierDisplayId: app_id, # For requesting Web Push certificates
       })
       parse_response(r, 'certRequest')
     end
@@ -647,6 +648,7 @@ module Spaceship
         r.params = {
           teamId: team_id,
           includeInactiveProfiles: true,
+          includeExpiredProfiles: true,
           onlyCountLists: true
         }
       end

@@ -45,6 +45,7 @@ module FastlaneCore
           if line =~ /^-- /
             (os_type, os_version) = line.gsub(/-- (.*) --/, '\1').split
           else
+            next if os_type =~ /^Unavailable/
 
             # "    iPad (5th generation) (852A5796-63C3-4641-9825-65EBDC5C4259) (Shutdown)"
             # This line will turn the above string into
@@ -306,7 +307,7 @@ module FastlaneCore
         logarchive_dst = File.join(logs_destination_dir, "system_logs-#{log_identity}.logarchive").shellescape
         FileUtils.rm_rf(logarchive_dst)
         FileUtils.mkdir_p(File.expand_path("..", logarchive_dst))
-        command = "xcrun simctl spawn #{device.udid} log collect --output #{logarchive_dst} 2>/dev/null"
+        command = "xcrun simctl spawn --standalone #{device.udid} log collect --output #{logarchive_dst} 2>/dev/null"
         FastlaneCore::CommandExecutor.execute(command: command, print_all: false, print_command: true)
       end
     end

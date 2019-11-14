@@ -1,67 +1,117 @@
 require_relative '../client'
+require_relative './response'
 
 module Spaceship
-  module ConnectAPI
+  class ConnectAPI
     class Client < Spaceship::Client
-      ##
-      # Spaceship HTTP client for the App Store Connect API.
-      #
-      # This client is solely responsible for the making HTTP requests and
-      # parsing their responses. Parameters should be either named parameters, or
-      # for large request data bodies, pass in anything that can resond to
-      # `to_json`.
-      #
-      # Each request method should validate the required parameters. A required parameter is one that would result in 400-range response if it is not supplied.
-      # Each request method should make only one request. For more high-level logic, put code in the data models.
+      attr_accessor :token
+
+      #####################################################
+      # @!group Client Init
+      #####################################################
+
+      # Instantiates a client with cookie session or a JWT token.
+      def initialize(cookie: nil, current_team_id: nil, token: nil)
+        if token.nil?
+          super(cookie: cookie, current_team_id: current_team_id)
+        else
+          options = {
+            request: {
+              timeout:       (ENV["SPACESHIP_TIMEOUT"] || 300).to_i,
+              open_timeout:  (ENV["SPACESHIP_TIMEOUT"] || 300).to_i
+            }
+          }
+          @token = token
+          @current_team_id = current_team_id
+
+          hostname = "https://api.appstoreconnect.apple.com/v1/"
+
+          @client = Faraday.new(hostname, options) do |c|
+            c.response(:json, content_type: /\bjson$/)
+            c.response(:xml, content_type: /\bxml$/)
+            c.response(:plist, content_type: /\bplist$/)
+            c.use(FaradayMiddleware::RelsMiddleware)
+            c.adapter(Faraday.default_adapter)
+            c.headers["Authorization"] = "Bearer #{token.text}"
+
+            if ENV['SPACESHIP_DEBUG']
+              # for debugging only
+              # This enables tracking of networking requests using Charles Web Proxy
+              c.proxy = "https://127.0.0.1:8888"
+              c.ssl[:verify_mode] = OpenSSL::SSL::VERIFY_NONE
+            elsif ENV["SPACESHIP_PROXY"]
+              c.proxy = ENV["SPACESHIP_PROXY"]
+              c.ssl[:verify_mode] = OpenSSL::SSL::VERIFY_NONE if ENV["SPACESHIP_PROXY_SSL_VERIFY_NONE"]
+            end
+
+            if ENV["DEBUG"]
+              puts("To run spaceship through a local proxy, use SPACESHIP_DEBUG")
+            end
+          end
+        end
+      end
 
       def self.hostname
-        'https://appstoreconnect.apple.com/iris/v1/'
+        return nil
       end
 
-      def build_url(path: nil, filter: nil, includes: nil, limit: nil, sort: nil)
-        filters = filter.keys.map do |key|
-          "&filter[#{key}]=#{filter[key]}"
-        end.join("")
-        return "#{path}?&include=#{includes}&limit=#{limit}&sort=#{sort}#{filters}"
+      #
+      # Helpers
+      #
+
+      def web_session?
+        return @token.nil?
       end
 
-      def get_builds(filter: {}, includes: "buildBetaDetail,betaBuildMetrics", limit: 10, sort: "uploadedDate")
-        assert_required_params(__method__, binding)
+      def build_params(filter: nil, includes: nil, limit: nil, sort: nil, cursor: nil)
+        params = {}
 
-        # GET
-        # https://appstoreconnect.apple.com/iris/v1/builds
-        url = build_url(path: "builds", filter: filter, includes: includes, limit: limit, sort: sort)
+        filter = filter.delete_if { |k, v| v.nil? } if filter
 
-        response = request(:get, url)
+        params[:filter] = filter if filter && !filter.empty?
+        params[:include] = includes if includes
+        params[:limit] = limit if limit
+        params[:sort] = sort if sort
+        params[:cursor] = cursor if cursor
+
+        return params
+      end
+
+      def get(url_or_path, params = nil)
+        response = request(:get) do |req|
+          req.url(url_or_path)
+          req.options.params_encoder = Faraday::NestedParamsEncoder
+          req.params = params if params
+          req.headers['Content-Type'] = 'application/json'
+        end
         handle_response(response)
       end
 
-      def post_for_testflight_review(build_id: nil)
-        assert_required_params(__method__, binding)
-
-        # POST
-        # https://appstoreconnect.apple.com/iris/v1/betaAppReviewSubmissions
-        #
-        # {"data":{"type":"betaAppReviewSubmissions","relationships":{"build":{"data":{"type":"builds","id":"6f90f04a-3b48-4d4a-9bbd-9475c294a579"}}}}}
-
-        body = {
-          data: {
-            type: "betaAppReviewSubmissions",
-            relationships: {
-              build: {
-                data: {
-                  type: "builds",
-                  id: build_id
-                }
-              }
-            }
-          }
-        }
-
+      def post(url_or_path, body)
         response = request(:post) do |req|
-          req.url("betaAppReviewSubmissions")
+          req.url(url_or_path)
           req.body = body.to_json
           req.headers['Content-Type'] = 'application/json'
+        end
+        handle_response(response)
+      end
+
+      def patch(url_or_path, body)
+        response = request(:patch) do |req|
+          req.url(url_or_path)
+          req.body = body.to_json
+          req.headers['Content-Type'] = 'application/json'
+        end
+        handle_response(response)
+      end
+
+      def delete(url_or_path, params = nil, body = nil)
+        response = request(:delete) do |req|
+          req.url(url_or_path)
+          req.options.params_encoder = Faraday::NestedParamsEncoder if params
+          req.params = params if params
+          req.body = body.to_json if body
+          req.headers['Content-Type'] = 'application/json' if body
         end
         handle_response(response)
       end
@@ -85,9 +135,7 @@ module Spaceship
 
         raise UnexpectedResponse, "Temporary App Store Connect error: #{response.body}" if response.body['statusCode'] == 'ERROR'
 
-        return response.body['data'] if response.body['data']
-
-        return response.body
+        return Spaceship::ConnectAPI::Response.new(body: response.body, status: response.status, client: self)
       end
 
       def handle_errors(response)
@@ -112,18 +160,6 @@ module Spaceship
 
       private
 
-      # used to assert all of the named parameters are supplied values
-      #
-      # @raises NameError if the values are nil
-      def assert_required_params(method_name, binding)
-        parameter_names = method(method_name).parameters.map { |_, v| v }
-        parameter_names.each do |name|
-          if local_variable_get(binding, name).nil?
-            raise NameError, "`#{name}' is a required parameter"
-          end
-        end
-      end
-
       def local_variable_get(binding, name)
         if binding.respond_to?(:local_variable_get)
           binding.local_variable_get(name)
@@ -138,4 +174,5 @@ module Spaceship
       end
     end
   end
+  # rubocop:enable Metrics/ClassLength
 end
