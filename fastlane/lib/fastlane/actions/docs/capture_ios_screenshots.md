@@ -190,10 +190,16 @@ The `Snapfile` can contain all the options that are also available on `fastlane 
 scheme("UITests")
 
 devices([
-  "iPhone 6",
-  "iPhone 6 Plus",
-  "iPhone 5",
-  "iPhone 4s"
+  "iPad (7th generation)",
+  "iPad Air (3rd generation)",
+  "iPad Pro (11-inch)",
+  "iPad Pro (12.9-inch) (3rd generation)",
+  "iPad Pro (9.7-inch)",
+  "iPhone 11",
+  "iPhone 11 Pro",
+  "iPhone 11 Pro Max",
+  "iPhone 8",
+  "iPhone 8 Plus"
 ])
 
 languages([
@@ -209,6 +215,8 @@ launch_arguments(["-username Felix"])
 output_directory('./screenshots')
 
 clear_previous_screenshots(true)
+
+override_status_bar(true)
 
 add_photos(["MyTestApp/Assets/demo.jpg"])
 ```
@@ -320,7 +328,7 @@ To get more information about language and locale codes please read [Internation
 
 ## Use a clean status bar
 
-You can use [SimulatorStatusMagic](https://github.com/shinydevelopment/SimulatorStatusMagic) to clean up the status bar.
+You can set `override_status_bar` to `true` to set the status bar to Tuesday January 9th at 9:41AM with full battery and reception.
 
 ## Editing the `Snapfile`
 
@@ -356,7 +364,7 @@ snapshot(launch_arguments: ["SKIP_ANIMATIONS"])
 ```
 
 By default, _snapshot_ will wait for a short time for the animations to finish.
-If you're skipping the animations, this is wait time is unnecessary and can be skipped:
+If you're skipping the animations, this wait time is unnecessary and can be skipped:
 
 ```swift
 setupSnapshot(app, waitForAnimations: false)

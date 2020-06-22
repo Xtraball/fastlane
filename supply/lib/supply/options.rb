@@ -43,7 +43,10 @@ module Supply
                                      env_name: "SUPPLY_TRACK",
                                      description: "The track of the application to use. The default available tracks are: #{Supply::Tracks::DEFAULTS.join(', ')}",
                                      default_value: Supply::Tracks::DEFAULT,
-                                     type: String),
+                                     type: String,
+                                     verify_block: proc do |value|
+                                       UI.user_error!("'rollout' is no longer a valid track name - please use 'production' instead") if value.casecmp('rollout').zero?
+                                     end),
         FastlaneCore::ConfigItem.new(key: :rollout,
                                      short_option: "-r",
                                      description: "The percentage of the user fraction when uploading to the rollout track",
@@ -208,7 +211,10 @@ module Supply
         FastlaneCore::ConfigItem.new(key: :track_promote_to,
                                      env_name: "SUPPLY_TRACK_PROMOTE_TO",
                                      optional: true,
-                                     description: "The track to promote to. The default available tracks are: #{Supply::Tracks::DEFAULTS.join(', ')}"),
+                                     description: "The track to promote to. The default available tracks are: #{Supply::Tracks::DEFAULTS.join(', ')}",
+                                     verify_block: proc do |value|
+                                       UI.user_error!("'rollout' is no longer a valid track name - please use 'production' instead") if value.casecmp('rollout').zero?
+                                     end),
         FastlaneCore::ConfigItem.new(key: :validate_only,
                                      env_name: "SUPPLY_VALIDATE_ONLY",
                                      optional: true,
@@ -274,6 +280,15 @@ module Supply
                                        version_codes.each do |version_code|
                                          UI.user_error!("Version code '#{version_code}' is not an integer") if version_code == 0
                                        end
+                                     end),
+        FastlaneCore::ConfigItem.new(key: :in_app_update_priority,
+                                     env_name: "SUPPLY_IN_APP_UPDATE_PRIORITY",
+                                     optional: true,
+                                     type: Integer,
+                                     description: "In-app update priority for all the newly added apks in the release. Can take values between [0,5]",
+                                     verify_block: proc do |in_app_update_priority|
+                                       in_app_update_priority = in_app_update_priority.to_i
+                                       UI.user_error!("Invalid in_app_update_priority value '#{in_app_update_priority}'. Values must be between [0,5]") unless (0..5).member?(in_app_update_priority)
                                      end),
         FastlaneCore::ConfigItem.new(key: :obb_main_references_version,
                                      env_name: "SUPPLY_OBB_MAIN_REFERENCES_VERSION",

@@ -95,8 +95,14 @@ module Fastlane
         return "Int"
       elsif type_override == Boolean
         return "Bool"
+      elsif type_override == Float
+        return "Float"
       elsif type_override == :string_callback
-        return "((String) -> Void)"
+        # David Hart:
+        # It doesn't make sense to add escaping annotations to optional closures because they aren't function types:
+        # they are basically an enum (Optional) containing a function, the same way you would store a closure in any type:
+        # it's implicitly escaping because it's owned by another type.
+        return "((String) -> Void)?"
       else
         return default_type
       end
@@ -104,7 +110,7 @@ module Fastlane
 
     def override_default_value_if_not_correct_type(param_name: nil, param_type: nil, default_value: nil)
       return "[]" if param_type == "[String]" && default_value == ""
-      return "{_ in }" if param_type == "((String) -> Void)"
+      return "nil" if param_type == "((String) -> Void)?"
 
       return default_value
     end
@@ -119,7 +125,7 @@ module Fastlane
 
       optional_specifier = ""
       # if we are optional and don't have a default value, we'll need to use ?
-      optional_specifier = "?" if (optional && default_value.nil?) && type != "((String) -> Void)"
+      optional_specifier = "?" if (optional && default_value.nil?) && type != "((String) -> Void)?"
 
       # If we have a default value of true or false, we can infer it is a Bool
       if default_value.class == FalseClass
@@ -130,8 +136,19 @@ module Fastlane
         type = "[String]"
       elsif default_value.kind_of?(Hash)
         type = "[String : Any]"
+      # Altough we can have a default value of Integer type, if param_type_override overridden that value, respect it.
       elsif default_value.kind_of?(Integer)
-        type = "Int"
+        if type == "Double" || type == "Float"
+          begin
+            # If we're not able to instantiate
+            _ = BigDecimal(default_value)
+          rescue
+            # We set it as a Int
+            type = "Int"
+          end
+        else
+          type = "Int"
+        end
       end
       return "#{type}#{optional_specifier}"
     end
@@ -147,8 +164,9 @@ module Fastlane
         unless default_value.nil?
           if type == "[String : Any]"
             # we can't handle default values for Hashes, yet
+            # see method swift_default_implementations for similar behavior
             default_value = "[:]"
-          elsif type != "Bool" && type != "[String]" && type != "Int" && type != "((String) -> Void)"
+          elsif type != "Bool" && type != "[String]" && type != "Int" && type != "@escaping ((String) -> Void)" && type != "Float" && type != "Double"
             default_value = "\"#{default_value}\""
           end
         end
@@ -343,6 +361,10 @@ module Fastlane
         unless default_value.nil?
           if type == "Bool" || type == "[String]" || type == "Int" || default_value.kind_of?(Array)
             default_value = default_value.to_s
+          elsif default_value.kind_of?(Hash)
+            # we can't handle default values for Hashes, yet
+            # see method parameters for similar behavior
+            default_value = "[:]"
           else
             default_value = "\"#{default_value}\""
           end
@@ -364,6 +386,10 @@ module Fastlane
 
         if type == "[String]"
           default_value ||= "[]"
+        end
+
+        if type == "[String : Any]"
+          default_value ||= "[:]"
         end
 
         "  var #{var_for_parameter_name}: #{type} { return #{default_value} }"
